@@ -24,6 +24,7 @@ apt-get install -y kubeadm kubelet kubectl kubernetes-cni
 
 
 #INSTALL CRIO
+# https://kubernetes.io/docs/setup/production-environment/container-runtimes/#cri-o
 
 # Create the .conf file to load the modules at bootup
 cat <<EOF | tee /etc/modules-load.d/crio.conf
@@ -55,7 +56,19 @@ EOF
 curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/Release.key | sudo apt-key --keyring /etc/apt/trusted.gpg.d/libcontainers.gpg add -
 curl -L https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:$VERSION/$OS/Release.key | sudo apt-key --keyring /etc/apt/trusted.gpg.d/libcontainers-cri-o.gpg add -
 
-sudo apt-get -y update
-sudo apt-get -y install cri-o cri-o-runc
+apt-get -y update
+apt-get -y install cri-o cri-o-runc
+
+touch /etc/crio/crio.conf.d/02-cgroup-manager.conf
+cat <<EOF | tee /etc/crio/crio.conf.d/02-cgroup-manager.conf
+[crio.runtime]
+conmon_cgroup = "pod"
+cgroup_manager = "cgroupfs"
+EOF
+
+systemctl daemon-reload
+systemctl start crio
+
+
 
 
