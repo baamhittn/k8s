@@ -59,7 +59,6 @@ curl -L https://download.opensuse.org/repositories/devel:kubic:libcontainers:sta
 apt-get -y update
 apt-get -y install cri-o cri-o-runc
 
-touch /etc/crio/crio.conf.d/02-cgroup-manager.conf
 cat <<EOF | tee /etc/crio/crio.conf.d/02-cgroup-manager.conf
 [crio.runtime]
 conmon_cgroup = "pod"
@@ -67,8 +66,14 @@ cgroup_manager = "cgroupfs"
 EOF
 
 systemctl daemon-reload
+systemctl enable crio
 systemctl start crio
+sudo -u ubuntu git clone https://github.com/baamhittn/k8s.git /home/ubuntu/k8sscripts
 
+chmod -R 777 /home/ubuntu/k8sscripts 
 
+sudo -u ubuntu /home/ubuntu/k8sscripts/k8sinstallmaster
+
+reboot
 
 

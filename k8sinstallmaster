@@ -1,12 +1,13 @@
 #!/bin/bash
 
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16 > ~/k8sinstallmaster.log
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 | tee ~/k8sinstallmaster.log
 
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 echo 'source <(kubectl completion bash)' >>~/.bashrc
+source <(kubectl completion bash)
 
 kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/k8s-manifests/kube-flannel-rbac.yml
