@@ -1,0 +1,119 @@
+# https://github.com/greg4fun/k8s_simulation_on_vagrant
+
+
+- hosts: k8s_hosts
+  become: yes
+  vars:
+     VERSION: '1.20'
+     OS: xUbuntu_20.04
+
+  tasks:
+    - name: Update APT package cache
+      apt: 
+        update_cache: yes 
+
+    - name: Upgrade APT to the latest packages
+      apt: 
+        upgrade: dist
+
+    - name: Install list dependicies
+      apt:
+        name: ['apt-transport-https','curl','git']
+        state: present
+
+# INSTALL K8S
+# https://kubernetes.io/de/docs/tasks/tools/install-kubectl/
+    - name: add Kubernetes apt-key
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+
+
+    - name: add Kubernetes' APT repository
+      apt_repository:
+        repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+        state: present
+        filename: 'kubernetes'
+
+    - name: install kubelet
+      apt:
+        name: ['kubeadm','kubelet','kubectl','kubernetes-cni']
+        state: present
+        update_cache: true
+
+#INSTALL CRIO
+# https://kubernetes.io/docs/setup/production-environment/container-runtimes/#cri-o
+
+
+    - name: create the .conf file to load the modules at bootup
+      copy:
+        dest: /etc/modules-load.d/crio.conf
+        content: |
+                overlay
+                br_netfilter
+
+    - name: Add the overlay module
+      modprobe:
+        name: overlay
+        state: present
+
+    - name: Add the br_netfilter module
+      modprobe:
+        name: br_netfilter
+        state: present
+
+    - name: Set up required sysctl params, these persist across reboots.
+      copy:
+        dest: /etc/sysctl.d/99-kubernetes-cri.conf
+        content: |
+                net.bridge.bridge-nf-call-iptables  = 1
+                net.ipv4.ip_forward                 = 1
+                net.bridge.bridge-nf-call-ip6tables = 1
+
+    - name: Reload sysctl
+      command: sysctl --system
+
+    - name: add CRIO apt-key
+      apt_key:
+        url: https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/{{ OS }}/Release.key 
+        state: present
+
+    - name: add Crio APT repository
+      apt_repository:
+        repo: 'deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/{{ OS }}/ /'
+        state: present
+        filename: 'devel:kubic:libcontainers:stable'
+
+    - name: add CRIO apt-key
+      apt_key:
+        url: https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:{{ VERSION }}/{{ OS }}/Release.key
+        state: present
+
+    - name: add Crio APT repository
+      apt_repository:
+        repo: 'deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/{{ VERSION }}/{{ OS }}/ /'
+        state: present
+        filename: 'devel:kubic:libcontainers:stable:cri-o:{{ VERSION }}'
+
+
+    - name: install crio
+      apt:
+        name: ['cri-o','cri-o-runc']
+        state: present
+        update_cache: true
+
+    - name: set cgroup
+      copy:
+        dest: /etc/crio/crio.conf.d/02-cgroup-manager.conf
+        content: |
+                [crio.runtime]
+                conmon_cgroup = "pod"
+                cgroup_manager = "cgroupfs"
+
+
+    - name: enable and start crio
+      ansible.builtin.systemd:
+        name: crio
+        state: started
+        daemon_reload: yes
+        enabled: yes
