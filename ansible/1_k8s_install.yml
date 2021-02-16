@@ -111,6 +111,20 @@
                 cgroup_manager = "cgroupfs"
 
 
+    - name: delete registry config file
+      ansible.builtin.file:
+        path: /etc/crio/crio.conf.d/03-registries_insecure.conf
+        state: absent
+
+    - name: add docker.io registry
+      copy:
+        dest: /etc/crio/crio.conf.d/03-registries_insecure.conf
+        content: |
+                [crio.image]
+                registries = ['docker.io']
+
+
+
     - name: enable and start crio
       ansible.builtin.systemd:
         name: crio
